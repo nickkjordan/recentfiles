@@ -367,7 +367,8 @@ sdfploth = axes('parent',sdfflowh,'Color','none');
         axis([0 stop-start+1 0 size(rasters,1)]);
         hold on
         
-        grey = [0.4,0.4,0.4];
+        %% grey
+        grey = [0.75,0.75,0.75];
         for j=1:size(allgreyareas,1) %plotting grey area trial by trial
             greytimes=find(allgreyareas(j,start:stop)); %converting from a matrix representation to a time collection, within selected time range
             if isnan(sum(allgreyareas(j,start:stop)))
@@ -492,7 +493,8 @@ end
         axis([0 stop-start+1 0 size(rasters,1)]);
         hold on
 
-        grey = [0.4,0.4,0.4];
+        %% grey multiple
+        grey = [0.75,0.75,0.75];
         for j=1:size(allgreyareas,1) %plotting grey area trial by trial
             greytimes=find(allgreyareas(j,start:stop)); %converting from a matrix representation to a time collection, within selected time range
             if isnan(sum(allgreyareas(j,start:stop)))

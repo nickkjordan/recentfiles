@@ -491,11 +491,15 @@ end
         hold on
 
         %% grey multiple
-        grey = [0.75,0.75,0.75];
-        for j=1:size(allgreyareas,1) %plotting grey area trial by trial
-            greytimes=find(allgreyareas(j,start:stop)); %converting from a matrix representation to a time collection, within selected time range
-            plot([greytimes;greytimes],[ones(size(greytimes))*j;ones(size(greytimes))*j-1],'Color',grey);
-        end
+%         grey = [0.75,0.75,0.75];
+%         for j=1:size(allgreyareas,1) %plotting grey area trial by trial
+%             greytimes=find(allgreyareas(j,start:stop)); %converting from a matrix representation to a time collection, within selected time range
+%             plot([greytimes;greytimes],[ones(size(greytimes))*j;ones(size(greytimes))*j-1],'Color',grey);
+%         end
+
+        I = allgreyareas(1,start:stop);
+        I = 1 - I;
+        imshow(I, [-2, 1]);
         
         for j=1:size(rasters,1) %plotting rasters trial by trial
         spiketimes=find(rasters(j,start:stop)); %converting from a matrix representation to a time collection, within selected time range

@@ -368,10 +368,15 @@ sdfploth = axes('parent',sdfflowh,'Color','none');
         hold on
         
         %% grey
-        grey = [0.75,0.75,0.75];
+            grey = [0.75,0.75,0.75];
         for j=1:size(allgreyareas,1) %plotting grey area trial by trial
             greytimes=find(allgreyareas(j,start:stop)); %converting from a matrix representation to a time collection, within selected time range
             plot([greytimes;greytimes],[ones(size(greytimes))*j;ones(size(greytimes))*j-1],'Color',grey);
+            highlight = zeros(size(greytimes));
+            highlight(1) = 1;
+            highlight(end) = 1;
+            m = plot([greytimes;greytimes],[highlight*j;highlight*j-1],'Color','m','Linewidth',3);
+            uistack(m,'top');
         end
         
         for j=1:size(rasters,1) %plotting rasters trial by trial
@@ -379,7 +384,13 @@ sdfploth = axes('parent',sdfflowh,'Color','none');
             if isnan(sum(rasters(j,start:stop)))
                 isnantrial(j)=1;
             end
-        plot([spiketimes;spiketimes],[ones(size(spiketimes))*j;ones(size(spiketimes))*j-1],'k-')
+        h = plot([spiketimes;spiketimes],[ones(size(spiketimes))*j;ones(size(spiketimes))*j-1],'k-');
+        uistack(h,'down');
+                % had a doubt about the number of spikes displayed. Twas due to
+                % the stupid imagesc rasterplot, which doesn't scale properly at
+                % small window sizes
+                % spkcntstr=sprintf('number of spikes in raster %d trial %d is %d', i, j, length(spiketimes));
+                % disp(spkcntstr);
         end
         hold off
         set(gca,'TickDir','out'); % draw the tick marks on the outside
@@ -495,6 +506,11 @@ end
         for j=1:size(allgreyareas,1) %plotting grey area trial by trial
             greytimes=find(allgreyareas(j,start:stop)); %converting from a matrix representation to a time collection, within selected time range
             plot([greytimes;greytimes],[ones(size(greytimes))*j;ones(size(greytimes))*j-1],'Color',grey);
+            highlight = zeros(size(greytimes));
+            highlight(1) = 1;
+            highlight(end) = 1;
+            m = plot([greytimes;greytimes],[highlight*j;highlight*j-1],'Color','m','Linewidth',3);
+            uistack(m,'top');
         end
         
         for j=1:size(rasters,1) %plotting rasters trial by trial
@@ -502,7 +518,8 @@ end
             if isnan(sum(rasters(j,start:stop)))
                 isnantrial(j)=1;
             end
-        plot([spiketimes;spiketimes],[ones(size(spiketimes))*j;ones(size(spiketimes))*j-1],'k-');
+        h = plot([spiketimes;spiketimes],[ones(size(spiketimes))*j;ones(size(spiketimes))*j-1],'k-');
+        uistack(h,'down');
                 % had a doubt about the number of spikes displayed. Twas due to
                 % the stupid imagesc rasterplot, which doesn't scale properly at
                 % small window sizes

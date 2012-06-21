@@ -1,4 +1,4 @@
-function [alignedrasters, alignindex, trialindex, timefromtrig, eyehoriz, eyevert, eyevelocity, amplitudes, peakvels, peakaccs, allonofftime, trialnumbers] = ...
+function [alignedrasters, alignindex, trialindex, alltimefromtrig, alltimetotrig, eyehoriz, eyevert, eyevelocity, amplitudes, peakvels, peakaccs, allonofftime, trialnumbers] = ...
     rdd_rasters( name, spikechannel, aligntocode, noneofcodes, allowbadtrials, alignsacnum, greycodes)
 
 % used to be: rdd_rasters( name, spikechannel, anyofcodes, allofcodes, noneofcodes, alignmentcode, allowbadtrials, alignsacnum, oncode, offcode)
@@ -55,11 +55,14 @@ function [alignedrasters, alignindex, trialindex, timefromtrig, eyehoriz, eyever
 %global trialonofftime;
 global rexnumtrials;
 
+tasktype=get(findobj('Tag','taskdisplay'),'String');
+
 alignedrasters=[];
 sphisto=[];
 alignindex=[];
 trialindex=[];
 timefromtrig=[];
+timetotrig=[];
 eyehoriz=[];
 eyevert=[];
 eyevelocity=[];
@@ -126,6 +129,8 @@ eyehoriz = [];
 eyevert = [];
 eyevelocity = [];
 allonoffcodetime = [];
+alltimefromtrig=[];
+alltimetotrig=[];
 sacamp = NaN;
 sacpeakpeakvel = NaN;
 sacpeakacc = NaN;
@@ -155,9 +160,17 @@ while ~islast
     if isempty(h) || isempty(ecodeout)
         cond_disp( 'Something wrong with trial, no data.' );
     else
-        anyof = has_any_of( ecodeout, alignto );
-        
-        %allof = has_all_of( ecodeout, allofcodes );
+        if size(alignto,1)>1
+            %             if ~sum(find(alignto==1001))
+            anyof = has_any_of( ecodeout, alignto );
+            allof = 1;
+            %                 % reintroduced anyof for collapsed alignements
+        else
+            allof = has_all_of( ecodeout, alignto );
+            anyof=1;
+        end
+        %             end
+        %         end
         noneof = has_none_of( ecodeout, noneofcodes );
         
         %  If these are all true, we have found a trial matching the
@@ -166,7 +179,7 @@ while ~islast
         %  (falign) of the ecode indices where there's a match, which is
         %  probably unneccessary, since only the first is used.
         
-        if anyof & noneof
+        if allof & noneof %anyof &
             falign = [];
             for i = 1:length( alignto )
                 fnext = find( ecodeout == alignto(i) );
@@ -185,7 +198,7 @@ while ~islast
             else
                 %% getting align times
                 % We found one or more alignments, so get the actual time of the
-                % first one.
+                % first one. (we only want to align on the first one: make sure it's the right one passed as argument)
                 
                 alignmentfound = ecodeout( falign(1) );
                 aligntime = etimeout( falign( 1 ) ) * (arate / 1000);
@@ -197,8 +210,15 @@ while ~islast
                 if  ATPbuttonnb==6 || alignsacnum % mainsacalign button OR corrective saccade
                     ampsacofint=[];
                     nwsacstart=cat(1,curtrialsacInfo.starttime);
-                    sacofint=nwsacstart>etimeout(falign(1)-1); %considering all saccades occuring after the ecode
-                    for k=find(sacofint,1):length(sacofint)%preceding the saccade ecode, which is often erroneous
+                    if strcmp(tasktype,'tokens')
+                        sacofint=nwsacstart>etimeout(falign(1))-40;  % the token task is special
+                        % in that we do not detect the saccade itself, but the eye leaving
+                        % the fixation window. The small delay (40ms) reflects that
+                    else
+                        sacofint=nwsacstart>etimeout(falign(1)-1); %considering all saccades occuring after the ecode
+                    end                                            %preceding the saccade ecode, which is often erroneous
+                    
+                    for k=find(sacofint,1):length(sacofint)
                         ampsacofint(1,k)=abs(getfield(curtrialsacInfo, {k}, 'amplitude'));
                     end
                     %start time of first saccade greater than 3 degrees (typical
@@ -248,7 +268,57 @@ while ~islast
                     nummatch = nummatch + 1;
                     alignindexlist( nummatch ) = aligntime;
                     trialindex(nummatch)=d;
-                    timefromtrig(nummatch)=aligntime-etimeout(1);
+                    
+                    % trigger times
+                    % beginning of trial trigger
+                    if find(ecodeout==1502) % Trigger code
+                        triggercode=1;
+                        timefromtrig=aligntime-etimeout(1)-1; %trigger code is 1ms before 1001
+                        
+                        %end of trial trigger
+                        %state sequence:
+                        %                         rewstart:
+                        %                             code REWCD
+                        %                             to rewon
+                        %                         rewon:
+                        %                             time 40		/* Duration of reward pulse */
+                        %                             to rewoff
+                        %                         varrewon: /* Open reward valve */
+                        %                             time 40	/* NB: Duration of reward pulse in this state is overruled by preset time in Token task*/
+                        %                             to rewoff
+                        %                         rewoff: /* Close reward valve */
+                        %                             time 100	/* Duration of inter reward pulse interval */
+                        %                             to rewchk
+                        %                         rewchk:
+                        %                             to correct on 0 ? rewcount
+                        %                             to varrewon on +TOKENS & para_flag
+                        %                             to rewon
+                        %                     /* Tally responses */
+                        %                         correct:
+                        %                             to rewtrigon
+                        %                         rewtrigon: do dio_on(TRIG)
+                        %                             time 100
+                        %                             to rewtrigoff
+                        %                         rewtrigoff: do dio_off(TRIG)
+                        
+                        
+                        if find(ecodeout==1030)
+                            timetotrig=etimeout(find(ecodeout==1502,1,'last'))+1-aligntime;
+                        else
+                            timetotrig=NaN;
+                        end
+                        
+                    else %older recordings without trigger code
+                        triggercode=0;
+                        timefromtrig=aligntime-etimeout(1)-1; %in case there is a trigger channel available in the SH recording
+                        if find(ecodeout==1030) %good trial
+                            timetotrig=etimeout(find(ecodeout==1030,1))+1-aligntime;%1ms between reward coe and valve opening
+                        else %wrong trial
+                            timetotrig=NaN;
+                        end
+                        
+                    end
+                    
                 end
                 %                 elseif alignsacnum < 0
                 %                     cond_disp( 'In rdd_rasters, aligning to saccades BEFORE alignment codes has not been implemented yet. ');
@@ -284,8 +354,8 @@ while ~islast
                     end;
                     rasters = cat_variable_size_row( rasters, train );
                     
-                        
-                        
+                    
+                    
                     if length(h)<length(train)
                         s = sprintf( 'In rdd_rasters, the eye trace was shorter than the spike raster (%d < %d) for trial %d.  Padding with zeros.',...
                             length(h), length(train), d );
@@ -299,9 +369,9 @@ while ~islast
                     
                     eyeh = cat_variable_size_row( eyeh, h );
                     eyev = cat_variable_size_row( eyev, v );
-%                     dh = diff( h );
-%                     dv = diff( v );
-%                     velocity = sqrt( ( dh .* dh ) + ( dv .* dv ) );
+                    %                     dh = diff( h );
+                    %                     dv = diff( v );
+                    %                     velocity = sqrt( ( dh .* dh ) + ( dv .* dv ) );
                     [filth, filtv, filtvel]=cal_velacc(h,v);
                     eyevel = cat_variable_size_row( eyevel, filtvel);
                     
@@ -311,15 +381,21 @@ while ~islast
                         codepairnb=floor(size(onoffcodetime,2)/2);%there may be multiple code. (Presumably) only one pair is valid for this particular trial
                         if size(greycodes,1)>1 %more than one row
                             for i=1:size(greycodes,1)
-                                onoffkeepcode=[onoffcodetime(i,find(~isnan(onoffcodetime(i,:)),1)) onoffcodetime(i,find(~isnan(onoffcodetime(i,:)),1)+codepairnb)]; %keep the first pair of good codes
+                                onoffkeepcode=[onoffcodetime(i,find(~isnan(onoffcodetime(i,:)),1))...
+                                    onoffcodetime(i,find(~isnan(onoffcodetime(i,:)),1)+codepairnb)]; %keep the first pair of good codes
                                 trialonofftime(onoffkeepcode(1):onoffkeepcode(2))=i; % a bit ridiculous, but simpler than keeping indexes in this code
                             end
                         else
-                            onoffkeepcode=[onoffcodetime(1,find(~isnan(onoffcodetime(1,:)),1)) onoffcodetime(1,find(~isnan(onoffcodetime(1,:)),1)+codepairnb)]; %keep the first pair of good codes)
+                            onoffkeepcode=[onoffcodetime(1,find(~isnan(onoffcodetime(1,:)),1))...
+                                onoffcodetime(1,find(~isnan(onoffcodetime(1,:)),1)+codepairnb)]; %keep the first pair of good codes)
                             trialonofftime(onoffkeepcode(1):onoffkeepcode(2))=1;
                         end
                         allonoffcodetime=cat_variable_size_row(allonoffcodetime, trialonofftime);
                     end
+                    
+                    %and finally collect trigger alignments
+                    alltimefromtrig=[alltimefromtrig timefromtrig];
+                    alltimetotrig=[alltimetotrig timetotrig];       
                     
                 end;
             end;

@@ -1,5 +1,4 @@
-function [ecodeout, etimeout, spkchan, spk, arate, h, v, start_time, badtrial, analog_time] =...
-    rex_trial_raw(name, trial, includeaborted)
+function [ecodeout, etimeout, spkchan, spk, arate, h, v, start_time, badtrial] = rex_trial_raw(name, trial, includeaborted)
 
 % function [ecodeout, etimeout, spkchan, spk, arate, h, v, start_time] =
 %       rex_trial_raw(name, trial, atrace)
@@ -155,14 +154,6 @@ currtime = etimes(idx1:idx2);
 fbt = find( currcode == BADCODE );
 if ~isempty( fbt )
     badtt = currtime( fbt );
-    if length(badtt)>1
-        % there was a botched trial
-        % take a look at currcode>999
-        str=sprintf('two error codes found in trial %d',trial);
-        disp(str);
-        disp('see rex_trial_raw line 160');
-        pause
-    end
 end;
 
 %% RCA - This is where it gets funny.
@@ -565,9 +556,6 @@ end;
 eidx = find(currcode > 999);
 ecodeout = currcode(eidx);
 etimeout = currtime(eidx) - analog_time;
-% absolute trigger times
-% triggin=etimes(idx1-1);
-% triggout=currtime(find(currcode==1502,1));
 
 % if nargout == 8
 % 	start_time = analog_time;

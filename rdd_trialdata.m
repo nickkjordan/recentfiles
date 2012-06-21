@@ -111,12 +111,17 @@ end
         eddhv = sqrt( ( diff( h ) .* diff( h ) ) + ( diff( v ) .* diff( v ) ) ); % had to add it, find_saccades didn't want to transfer ederiv's value properly
         
 %% Ecode selector based on task type.
-        curtasktype=get(findobj('Tag','taskdisplay'),'String');
-        % need to fuse taskdetect and taskfindecode at some point
-        [tasktype, ecodecueon, ecodesacstart, ecodesacend]=taskdetect(ecodeout, curtasktype); 
-
-            % if it's gapstop, ecode 8 is stopcode=507Y, and
+        tasktype=get(findobj('Tag','taskdisplay'),'String');
+        if strcmp(tasktype,'st_saccades')
+             ecodesacstart=8;  
+             ecodesacend=9;
+        else
+            disp( 'Using ecode 8 and 9 for saccade times. Change rdd_trialdata for more integrated use' );
+            ecodesacstart=8;
+            ecodesacend=9;
+            % of course if it's gapstop, ecode 8 is stopcode=507Y, and
             % ecode 9 is 1025 FPOFFCD , ecode 10 REWCD, etc ...
+        end
         
         wide = max( [length(eddhv) length(codetrain) length(h)] );
         
@@ -185,7 +190,7 @@ AccThreshold = 0.1;          %if acc > 100000 degrees/s^2, that is 0.1 deg/ms^2,
 %% caveat for wrong trials: ecodes times do not fit with eye position timeline after trial abort time
         %two condition: first is standard error, second is for early
         %saccade error
-        if logical(sum(find(ecodeout==17385))) || logical(sum(etimeout(ecodesacstart)>length(h)))  
+        if find(ecodeout==17385) | etimeout(ecodesacstart)>length(h)  
             str = sprintf('bad trial # %d or data. Adjusting trial to recorded eye position',trialnumber);
             disp(str);
             wide = max( [length(eddhv) length(h)] );
@@ -194,11 +199,8 @@ AccThreshold = 0.1;          %if acc > 100000 degrees/s^2, that is 0.1 deg/ms^2,
             %end                          %16386 is error code for early
                                         %saccade in st_sac
                                         
-                                                        
         else % if correct trial, proceed
-            
-                    errtrial=0;   
-
+            errtrial=0;      
         %% crop timeframe to display only portion relevant to saccade for subplot 2
         % also doing important search for saccade time based on the
         % accurate saccade detection methode
@@ -206,31 +208,10 @@ AccThreshold = 0.1;          %if acc > 100000 degrees/s^2, that is 0.1 deg/ms^2,
             %ssacbound=etimeout(ecodesacstart)-200; %used to be framed by saccade ecodes
                                                     %but turned out to be wrong
                                                     
-            if strcmp(tasktype,'tokens')
-                sacofint=nwsacstart>etimeout(ecodesacstart)-40; % the token task is special 
-                              % in that we do not detect the saccade itself, but the eye leaving
-                              % the fixation window. The small delay (40ms) reflects that
-                
-                %  a little bit of housekeeping to set anticipated saccades (ie, before second token) as bad trial
-%                     if length(ecodecueon)>=2 &&  nwsacstart(find(sacofint,1))<etimeout(ecodecueon(2))
-%                     recfile=matfile(rdd_filename);
-%                     recfile.Properties.Writable = true;
-%                     recfile.allbad(1,trialnumber)=1;
-%                     errtrial=1;
-%                     end
-            
-            else
-                sacofint=nwsacstart>etimeout(ecodesacstart-1); %considering all saccades occuring after the ecode
-            end
+            sacofint=nwsacstart>etimeout(ecodesacstart-1); %considering all saccades occuring after the ecode
             for k=find(sacofint,1,'first'):length(sacofint)%preceding the saccade ecode, which is often erroneous
                 ampsacofint(1,k)=abs(getfield(curtrialsacInfo, {k}, 'amplitude'));
-            end       
-            
-            if strcmp(tasktype,'gapstop') && (floor(ecodeout(2)./10))*10==4070 && ~exist('ampsacofint')
-            % stop trial, might not have saccades at all
-            ampsacofint=0;
-            end            
-            
+            end                     
             %start time of first saccade greater than 3 degrees (typical
             %restriction window) after relevant ecode (ecodesacstart-1)
             if logical(sum(ampsacofint>3))
@@ -254,7 +235,6 @@ AccThreshold = 0.1;          %if acc > 100000 degrees/s^2, that is 0.1 deg/ms^2,
                 ssacbound=etimeout(ecodesacstart)-200;
                 esacbound=etimeout(ecodesacend)+200;
             end
-            
                 newh=h(ssacbound:esacbound);
                 newv=v(ssacbound:esacbound);
                 neweddhv=eddhv(ssacbound:esacbound-1);
@@ -329,18 +309,6 @@ AccThreshold = 0.1;          %if acc > 100000 degrees/s^2, that is 0.1 deg/ms^2,
                 
         scatter(nwsacstart,5.*ones(1,length(nwsacstart)),'g','d');
         scatter(nwsacend,5.*ones(1,length(nwsacend)),'r','d');
-        
-        %plot visual cue epoch(s)as shaded areas
-        if ecodecueon
-        for cuenb = 1:length(ecodecueon)
-            cueontime=etimeout(ecodecueon(cuenb));
-            cueofftime=cueontime+10;
-            patch([repmat(timeline(cueontime),1,2) repmat(timeline(cueofftime),1,2)], ...
-            [get(gca,'YLim') fliplr(get(gca,'YLim'))], ...
-            [0 0 0 0],[1 0 0],'EdgeColor','none','FaceAlpha',0.3);
-        end
-        end
-        
         hold off;
         ax = axis(gca);     
         ax(2) = wide;   

@@ -380,12 +380,88 @@ sdfploth = axes('parent',sdfflowh,'Color','none');
         
         axis([0 stop-start+1 0 size(rasters,1)]);
         hold on
+<<<<<<< HEAD
+=======
+        
+        %% grey
+            if logical(sum(togrey))
+                for j=1:size(allgreyareas,1) %plotting grey area trial by trial
+                    greytimes=find(allgreyareas(j,start:stop)); %converting from a matrix representation to a time collection, within selected time range
+                    
+                    p = find(diff(greytimes)>1);
+                    y = greytimes(p);
+                    
+                    
+                    if isempty(y)
+                        patch([greytimes(1) greytimes(end) greytimes(end) greytimes(1)],[j j j-1 j-1],...
+                            [0 0 0], 'EdgeColor', 'none', 'FaceAlpha', 0.3);
+                        y1 = patch([greytimes(1) greytimes(1)], [j j-1], [1 0 0]);
+                        y2 = patch([greytimes(end) greytimes(end)], [j j-1], [1 0 0]);
+                        set(y1, 'Edgecolor', [0 0 1],'Linewidth',2, 'EdgeAlpha', 0.5, 'FaceAlpha', 0.3)
+                        set(y2, 'Edgecolor', [0 0 1],'Linewidth',2, 'EdgeAlpha', 0.5, 'FaceAlpha', 0.3)
+                    else
+                        for k = 1:length(y)
+                            if k==1
+                                patch([greytimes(1) greytimes(p(k)) greytimes(p(k)) greytimes(1)],[j j j-1 j-1],...
+                                    [0 0 0], 'EdgeColor', 'none', 'FaceAlpha', 0.3);
+                                y3 = patch([greytimes(1) greytimes(1)], [j j-1], [1 0 0]);
+                                y4 = patch([greytimes(p(k)) greytimes(p(k))], [j j-1], [1 0 0]);
+                                set(y3, 'Edgecolor', [0 0 1],'Linewidth',2, 'EdgeAlpha', 0.5, 'FaceAlpha', 0.3)
+                                set(y4, 'Edgecolor', [0 0 1],'Linewidth',2, 'EdgeAlpha', 0.5, 'FaceAlpha', 0.3)
+                            end
+                            if k == length(y)
+                                patch([greytimes(p(k)+1) greytimes(end) greytimes(end) greytimes(p(k)+1)],[j j j-1 j-1],...
+                                    [0 0 0], 'EdgeColor', 'none', 'FaceAlpha', 0.3);
+                                y5 = patch([greytimes(p(k)+1) greytimes(p(k)+1)], [j j-1], [1 0 0]);
+                                y6 = patch([greytimes(end) greytimes(end)], [j j-1], [1 0 0]);
+                                set(y5, 'Edgecolor', [0 0 1],'Linewidth',2, 'EdgeAlpha', 0.5, 'FaceAlpha', 0.3)
+                                set(y6, 'Edgecolor', [0 0 1],'Linewidth',2, 'EdgeAlpha', 0.5, 'FaceAlpha', 0.3)
+                            else
+                                patch([greytimes(p(k)+1) greytimes(p(k+1)) greytimes(p(k+1)) greytimes(p(k)+1)],[j j j-1 j-1],...
+                                    [0 0 0], 'EdgeColor', 'none', 'FaceAlpha', 0.3);
+                                y7 = patch([greytimes(p(k)+1) greytimes(p(k)+1)], [j j-1], [1 0 0]);
+                                y8 = patch([greytimes(p(k+1)) greytimes(p(k+1))], [j j-1], [1 0 0]);
+                                set(y7, 'Edgecolor', [0 0 1],'Linewidth',2, 'EdgeAlpha', 0.5, 'FaceAlpha', 0.3)
+                                set(y8, 'Edgecolor', [0 0 1],'Linewidth',2, 'EdgeAlpha', 0.5, 'FaceAlpha', 0.3)
+                            end
+                        end
+                    end
+                    
+                end
+        end
+        
+        
+>>>>>>> grey-area-numbers
         for j=1:size(rasters,1) %plotting rasters trial by trial
-        spiketimes=find(rasters(j,start:stop)); %converting from a matrix representation to a time collection, within selected time range
+            spiketimes=find(rasters(j,start:stop)); %converting from a matrix representation to a time collection, within selected time range
             if isnan(sum(rasters(j,start:stop)))
                 isnantrial(j)=1;
             end
-        plot([spiketimes;spiketimes],[ones(size(spiketimes))*j;ones(size(spiketimes))*j-1],'k-')
+            h = plot([spiketimes;spiketimes],[ones(size(spiketimes))*j;ones(size(spiketimes))*j-1],'k-');
+            uistack(h,'down');
+            % had a doubt about the number of spikes displayed. Twas due to
+            % the stupid imagesc rasterplot, which doesn't scale properly at
+            % small window sizes
+            % spkcntstr=sprintf('number of spikes in raster %d trial %d is %d', i, j, length(spiketimes));
+            % disp(spkcntstr);
+        end
+        
+        if exist('y1')
+            uistack(y1,'top');
+        elseif exist('y2')
+            uistack(y2,'top');
+        elseif exist('y3')
+            uistack(y3,'top');
+        elseif exist('y4')
+            uistack(y4,'top');
+        elseif exist('y5')
+            uistack(y5,'top');
+        elseif exist('y6')
+            uistack(y6,'top');
+        elseif exist('y7')
+            uistack(y7,'top');
+        elseif exist('y8')
+            uistack(y8,'top');
         end
         hold off
         set(gca,'TickDir','out'); % draw the tick marks on the outside
@@ -525,17 +601,88 @@ end
         isnantrial=zeros(1,size(rasters,1));
         axis([0 stop-start+1 0 size(rasters,1)]);
         hold on
+<<<<<<< HEAD
+=======
+
+        %% grey multiple
+        if logical(sum(togrey))
+                for j=1:size(allgreyareas,1) %plotting grey area trial by trial
+                    greytimes=find(allgreyareas(j,start:stop)); %converting from a matrix representation to a time collection, within selected time range
+                    
+                    p = find(diff(greytimes)>1);
+                    y = greytimes(p);
+                    
+                    
+                    if isempty(y)
+                        patch([greytimes(1) greytimes(end) greytimes(end) greytimes(1)],[j j j-1 j-1],...
+                            [0 0 0], 'EdgeColor', 'none', 'FaceAlpha', 0.3);
+                        y1 = patch([greytimes(1) greytimes(1)], [j j-1], [1 0 0]);
+                        y2 = patch([greytimes(end) greytimes(end)], [j j-1], [1 0 0]);
+                        set(y1, 'Edgecolor', [0 0 1],'Linewidth',2, 'EdgeAlpha', 0.5, 'FaceAlpha', 0.3)
+                        set(y2, 'Edgecolor', [0 0 1],'Linewidth',2, 'EdgeAlpha', 0.5, 'FaceAlpha', 0.3)
+                    else
+                        for k = 1:length(y)
+                            if k==1
+                                patch([greytimes(1) greytimes(p(k)) greytimes(p(k)) greytimes(1)],[j j j-1 j-1],...
+                                    [0 0 0], 'EdgeColor', 'none', 'FaceAlpha', 0.3);
+                                y3 = patch([greytimes(1) greytimes(1)], [j j-1], [1 0 0]);
+                                y4 = patch([greytimes(p(k)) greytimes(p(k))], [j j-1], [1 0 0]);
+                                set(y3, 'Edgecolor', [0 0 1],'Linewidth',2, 'EdgeAlpha', 0.5, 'FaceAlpha', 0.3)
+                                set(y4, 'Edgecolor', [0 0 1],'Linewidth',2, 'EdgeAlpha', 0.5, 'FaceAlpha', 0.3)
+                            end
+                            if k == length(y)
+                                patch([greytimes(p(k)+1) greytimes(end) greytimes(end) greytimes(p(k)+1)],[j j j-1 j-1],...
+                                    [0 0 0], 'EdgeColor', 'none', 'FaceAlpha', 0.3);
+                                y5 = patch([greytimes(p(k)+1) greytimes(p(k)+1)], [j j-1], [1 0 0]);
+                                y6 = patch([greytimes(end) greytimes(end)], [j j-1], [1 0 0]);
+                                set(y5, 'Edgecolor', [0 0 1],'Linewidth',2, 'EdgeAlpha', 0.5, 'FaceAlpha', 0.3)
+                                set(y6, 'Edgecolor', [0 0 1],'Linewidth',2, 'EdgeAlpha', 0.5, 'FaceAlpha', 0.3)
+                            else
+                                patch([greytimes(p(k)+1) greytimes(p(k+1)) greytimes(p(k+1)) greytimes(p(k)+1)],[j j j-1 j-1],...
+                                    [0 0 0], 'EdgeColor', 'none', 'FaceAlpha', 0.3);
+                                y7 = patch([greytimes(p(k)+1) greytimes(p(k)+1)], [j j-1], [1 0 0]);
+                                y8 = patch([greytimes(p(k+1)) greytimes(p(k+1))], [j j-1], [1 0 0]);
+                                set(y7, 'Edgecolor', [0 0 1],'Linewidth',2, 'EdgeAlpha', 0.5, 'FaceAlpha', 0.3)
+                                set(y8, 'Edgecolor', [0 0 1],'Linewidth',2, 'EdgeAlpha', 0.5, 'FaceAlpha', 0.3)
+                            end
+                        end
+                    end
+                    
+                end
+        end
+        
+        
+>>>>>>> grey-area-numbers
         for j=1:size(rasters,1) %plotting rasters trial by trial
-        spiketimes=find(rasters(j,start:stop)); %converting from a matrix representation to a time collection, within selected time range
+            spiketimes=find(rasters(j,start:stop)); %converting from a matrix representation to a time collection, within selected time range
             if isnan(sum(rasters(j,start:stop)))
                 isnantrial(j)=1;
             end
-        plot([spiketimes;spiketimes],[ones(size(spiketimes))*j;ones(size(spiketimes))*j-1],'k-');
-                % had a doubt about the number of spikes displayed. Twas due to
-                % the stupid imagesc rasterplot, which doesn't scale properly at
-                % small window sizes
-                % spkcntstr=sprintf('number of spikes in raster %d trial %d is %d', i, j, length(spiketimes));
-                % disp(spkcntstr);
+            h = plot([spiketimes;spiketimes],[ones(size(spiketimes))*j;ones(size(spiketimes))*j-1],'k-');
+            uistack(h,'down');
+            % had a doubt about the number of spikes displayed. Twas due to
+            % the stupid imagesc rasterplot, which doesn't scale properly at
+            % small window sizes
+            % spkcntstr=sprintf('number of spikes in raster %d trial %d is %d', i, j, length(spiketimes));
+            % disp(spkcntstr);
+        end
+        
+        if exist('y1')
+            uistack(y1,'top');
+        elseif exist('y2')
+            uistack(y2,'top');
+        elseif exist('y3')
+            uistack(y3,'top');
+        elseif exist('y4')
+            uistack(y4,'top');
+        elseif exist('y5')
+            uistack(y5,'top');
+        elseif exist('y6')
+            uistack(y6,'top');
+        elseif exist('y7')
+            uistack(y7,'top');
+        elseif exist('y8')
+            uistack(y8,'top');
         end
         hold off;
         set(gca,'TickDir','out'); % draw the tick marks on the outside

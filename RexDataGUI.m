@@ -23,7 +23,7 @@ function varargout = RexDataGUI(varargin)
 %
 % See also: GUIDE, GUIDATA, GUIHANDLES
 
-% Last Modified by GUIDE v2.5 15-Jun-2012 15:14:04
+% Last Modified by GUIDE v2.5 06-Jun-2012 17:43:13
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -70,7 +70,7 @@ archst  = computer('arch');
 global directory slash
 
 if strcmp(archst, 'maci64')
-    directory = '/Users/nick/Dropbox/filesforNick/';
+    directory = '/Users/Frank/Desktop/monkeylab/data/';
     slash = '/';
 else
     directory = 'B:\data\Recordings\';
@@ -387,8 +387,12 @@ function displaymfiles_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 if strcmp(get(gcf,'SelectionType'),'normal')==1 % if simple click, just higlight it, don't open
 else %if strcmp(get(gcf,'SelectionType'),'open')==1
-    
-    clear functions;
+   
+s=dbstatus; %little trick to prevent removal of breakpoints with clear
+save('myBreakpoints.mat', 's');
+clear functions;
+load('myBreakpoints.mat');
+dbstop(s);
     
 processedrexfiles = cellstr(get(hObject,'String')); % returns displaymfiles contents as cell array
 rdd_filename = processedrexfiles{get(hObject,'Value')};%returns selected item from displaymfiles
@@ -414,7 +418,11 @@ end
 
 % --- Executes on button press in replotbutton.
 function replotbutton_Callback(hObject, eventdata, handles)
+s=dbstatus;  %little trick to prevent removal of breakpoints with clear
+save('myBreakpoints.mat', 's');
 clear functions;
+load('myBreakpoints.mat');
+dbstop(s);
 rdd_filename=get(findobj('Tag','filenamedisplay'),'String');
 [rdd_nt, trialdirs] = data_info( rdd_filename );
 dataaligned=rdd_rasters_sdf(rdd_filename, trialdirs);
@@ -429,28 +437,44 @@ dataaligned=guidata(hObject);
 savealignname=dataaligned.savealignname;
 save(savealignname,'dataaligned','-v7.3');
 %save some data to match with SH data analysis
+% about dataaligned: 
+% datalign.timefromtrig and datalign.timetotrig represent time from start
+% or to the end of the trial with respect to the alignment time
+% respectively. Depending on whether there is a trigger ecode,
+% they represent different things. 
+% No trigger ecode: time from the first trigger(in case there's a trigger 
+% channel, otherwise it's useless), and time to the  end-of-trial reward delivery 
+% Trigger ecode: time from onset of first trigger (beggining of trial), 
+% and time to onset of second trigger (end of trial).
+% for Rigel: no trigger ecode until R146 included
+% for Sixx: no trigger ecode until S102 included
+
 rdd_filename=get(findobj('Tag','filenamedisplay'),'String');
 recdata=matfile(rdd_filename);
-rex2sh=NaN(length(recdata.allbad),3);
+rex2sh=NaN(length(recdata.allbad),7);
 rex2sh(:,1)=~(recdata.allbad)';
+rex2sh(:,3)=recdata.alltrigin';
+rex2sh(:,5)=recdata.alltrigout';
+rex2sh(:,6)=recdata.allrew';
 for i=1:length(dataaligned)
     rex2sh((dataaligned(i).trials),2)=dataaligned(i).timefromtrig;
+    rex2sh((dataaligned(i).trials),4)=dataaligned(i).timetotrig;
     if strcmp(dataaligned(i).dir,'upward')
-        rex2sh((dataaligned(i).trials),3)=0;
+        rex2sh((dataaligned(i).trials),7)=0;
     elseif  strcmp(dataaligned(i).dir,'up_right')
-        rex2sh((dataaligned(i).trials),3)=45;
+        rex2sh((dataaligned(i).trials),7)=45;
     elseif  strcmp(dataaligned(i).dir,'rightward')
-        rex2sh((dataaligned(i).trials),3)=90;
+        rex2sh((dataaligned(i).trials),7)=90;
     elseif  strcmp(dataaligned(i).dir,'down_right')
-        rex2sh((dataaligned(i).trials),3)=135;
+        rex2sh((dataaligned(i).trials),7)=135;
     elseif strcmp(dataaligned(i).dir,'downward')
-        rex2sh((dataaligned(i).trials),3)=180;
+        rex2sh((dataaligned(i).trials),7)=180;
     elseif  strcmp(dataaligned(i).dir,'up_left')
-        rex2sh((dataaligned(i).trials),3)=315;
+        rex2sh((dataaligned(i).trials),7)=315;
     elseif  strcmp(dataaligned(i).dir,'leftward')
-        rex2sh((dataaligned(i).trials),3)=270;
+        rex2sh((dataaligned(i).trials),7)=270;
     elseif  strcmp(dataaligned(i).dir,'down_left')
-        rex2sh((dataaligned(i).trials),3)=225;
+        rex2sh((dataaligned(i).trials),7)=225;
     end
 end
 savealignsh=cat(2,savealignname,'_2SH');
@@ -861,23 +885,3 @@ filename=get(findobj('Tag','filenamedisplay'),'String');
 tasktype=get(findobj('Tag','taskdisplay'),'String');
 dataaligned=guidata(findobj('Tag','exportdata'));
 SummaryPlot(dataaligned,filename,tasktype);
-
-
-% --- Executes when selected object is changed in greyareapanel.
-function greyareapanel_SelectionChangeFcn(hObject, eventdata, handles)
-% hObject    handle to the selected object in greyareapanel 
-% eventdata  structure with the following fields (see UIBUTTONGROUP)
-%	EventName: string 'SelectionChanged' (read only)
-%	OldValue: handle of the previously selected object or empty if none was selected
-%	NewValue: handle of the currently selected object
-% handles    structure with handles and user data (see GUIDATA)
-
-
-% --- Executes when selected object is changed in showdirpanel.
-function showdirpanel_SelectionChangeFcn(hObject, eventdata, handles)
-% hObject    handle to the selected object in showdirpanel 
-% eventdata  structure with the following fields (see UIBUTTONGROUP)
-%	EventName: string 'SelectionChanged' (read only)
-%	OldValue: handle of the previously selected object or empty if none was selected
-%	NewValue: handle of the currently selected object
-% handles    structure with handles and user data (see GUIDATA)

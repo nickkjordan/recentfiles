@@ -106,7 +106,8 @@ alignseccodes=[];
 %define ecodes according to task
 %add last number for direction
 tasktype=get(findobj('Tag','taskdisplay'),'String');
-[fixcode fixoffcode tgtcode tgtoffcode saccode stopcode rewcode errcode1 errcode2 errcode3 errcode4] = taskfindecode(tasktype);
+[fixcode fixoffcode tgtcode tgtoffcode saccode ...
+    stopcode rewcode tokcode errcode1 errcode2 errcode3 basecode] = taskfindecode(tasktype);
 
 %% get align code from selected button in Align Time panel
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -141,7 +142,7 @@ end
 SAlignTimePanelH=findobj('Tag','secaligntimepanel');%align time panel handle
 SATPSelectedButton= get(get(SAlignTimePanelH,'SelectedObject'),'Tag');%selected button's tag
 SATPbuttonnb=find(strcmp(SATPSelectedButton,get(findall(SAlignTimePanelH),'Tag')));%converted to handle tag list's number
-if  SATPbuttonnb==3 % mainsacalign button
+if  SATPbuttonnb==3 % no align button
     secondcode=[];
 elseif SATPbuttonnb==4
     secondcode=errcode1;
@@ -152,8 +153,8 @@ elseif SATPbuttonnb==6
 elseif SATPbuttonnb==7
     secondcode=tgtcode;
 elseif SATPbuttonnb==8
-    if tasktype~='gapstop'
-        %faire qqchose!!
+    if ~strcmp(tasktype,'gapstop')
+        %not good!
     else
         secondcode=stopcode;
     end
@@ -207,6 +208,12 @@ if logical(secondcode)
         alignseccodes=secondcode;
     end
 end
+if length(trialdirs)>1
+    basecodes=(basecode*ones(length(trialdirs),1)*10)+trialdirs; %more efficient coding than above
+else
+    basecodes=basecode;
+end
+
 % default option: will display all directions separately
 % strcmp(get(get(findobj('Tag','showdirpanel'),'SelectedObject'),'Tag'),'selecalldir');
 % (no need to change alignment codes)
@@ -272,6 +279,7 @@ if strcmp(get(get(findobj('Tag','showdirpanel'),'SelectedObject'),'Tag'),'selecd
 elseif strcmp(get(get(findobj('Tag','showdirpanel'),'SelectedObject'),'Tag'),'seleccollapall');
     %compile all trial directions into a single raster
     aligncodes=ecodealign; % so that when  aligncodes is only three numbers long, rdd_rasters knows it has to collapse all directions together
+    alignseccodes=secondcode; % but this behavior is adapted to current use.
 else
     disp('Selected option: all directions'); %that's the 'selecalldir' tag
 end
@@ -285,13 +293,11 @@ if logical(sum(togrey))
         saccode=[704 704];
         stopcode=[507 507];
     end
-    
+    greycodes =[tgtcode tgtoffcode;saccode saccode;fixcode fixoffcode];
+    greycodes=greycodes(togrey,:); %selecting out the codes
     if strcmp(tasktype,'base2rem50')
     greycodes=[] %too complicated for the moment. Just unselected all checkboxes
     end
-        
-    greycodes =[tgtcode tgtoffcode;saccode saccode;fixcode fixoffcode];
-    greycodes=greycodes(togrey,:); %selecting out the codes
 end
 
 
@@ -307,12 +313,19 @@ end
 nonecodes=[];
 
 % variable to save aligned data
-datalign=struct('dir',{},'rasters',{},'trials',{},'timefromtrig',{},'alignidx',{},'eyeh',{},'eyev',{},'eyevel',{},'amplitudes',{},...
+datalign=struct('dir',{},'rasters',{},'trials',{},'timefromtrig',{},'timetotrig',{},'alignidx',{},'eyeh',{},'eyev',{},'eyevel',{},'amplitudes',{},...
                 'peakvels',{},'peakaccs',{},'allgreyareas',{},'savealignname',{});
+if strcmp(get(get(findobj('Tag','showdirpanel'),'SelectedObject'),'Tag'),'seleccompall') && sum(secondcode)==0
+    singlerastplot=1;
+else
+    singlerastplot=0;
+end
 
-if strcmp(get(get(findobj('Tag','showdirpanel'),'SelectedObject'),'Tag'),'seleccompall') || ...
-        aligncodes(1)==1030 || aligncodes(1)== 17385 || aligncodes(1)==16386 || aligncodes(1)==16387 || aligncodes(1)==16388;
-    %Which means that, until other code is deemed necessary, if aligned on reward or error codes, collapse all trials 
+if  singlerastplot || aligncodes(1)==1030 || aligncodes(1)== 17385 
+    % || aligncodes(1)==16386 || aligncodes(1)==16387 || aligncodes(1)==16388;
+     %Which means that, until other code is deemed necessary, if aligned on
+     %reward or error codes, and only one align code, collapse all trials
+     
 figure(gcf);
 
 rasterflowh = uigridcontainer('v0','Units','norm','Position',[.3,.1,.7,.9], ...
@@ -327,7 +340,7 @@ sdfflowh = uigridcontainer('v0','Units','norm','Position',[.3,.1,.7,.9], ...
 sdfploth = axes('parent',sdfflowh,'Color','none');
 
    
-    [rasters,aidx, trialidx, timefromtrig, eyeh,eyev,eyevel,amplitudes,peakvels,peakaccs,allgreyareas] = rdd_rasters( rdd_filename, spikechannel, aligncodes, nonecodes, includebad, alignsacnum, greycodes);
+    [rasters,aidx, trialidx, timefromtrigs, timetotrigs, eyeh,eyev,eyevel,amplitudes,peakvels,peakaccs,allgreyareas] = rdd_rasters( rdd_filename, spikechannel, aligncodes, nonecodes, includebad, alignsacnum, greycodes);
        
     if isempty( rasters )
             disp( 'No raster could be generated (rex_rasters_trialtype returned empty raster)' );
@@ -336,7 +349,8 @@ sdfploth = axes('parent',sdfflowh,'Color','none');
             datalign(1).rasters=rasters;
             datalign(1).alignidx=aidx;
             datalign(1).trials=find(trialidx);
-            datalign(1).timefromtrig=timefromtrig;
+            datalign(1).timefromtrig=timefromtrigs;
+            datalign(1).timetotrig=timetotrigs;
             datalign(1).eyeh=eyeh;
             datalign(1).eyev=eyev;
             datalign(1).eyevel=eyevel;
@@ -366,16 +380,6 @@ sdfploth = axes('parent',sdfflowh,'Color','none');
         
         axis([0 stop-start+1 0 size(rasters,1)]);
         hold on
-        
-        grey = [0.4,0.4,0.4];
-        for j=1:size(allgreyareas,1) %plotting grey area trial by trial
-            greytimes=find(allgreyareas(j,start:stop)); %converting from a matrix representation to a time collection, within selected time range
-            if isnan(sum(allgreyareas(j,start:stop)))
-                isnantrial(j)=1;
-            end
-            plot([greytimes;greytimes],[ones(size(greytimes))*j;ones(size(greytimes))*j-1],'Color',grey);
-        end
-        
         for j=1:size(rasters,1) %plotting rasters trial by trial
         spiketimes=find(rasters(j,start:stop)); %converting from a matrix representation to a time collection, within selected time range
             if isnan(sum(rasters(j,start:stop)))
@@ -423,31 +427,60 @@ sdfploth = axes('parent',sdfflowh,'Color','none');
         
     
     
-else % if multiple, separate directions, create individual rasterplots and sdf plots locations
+else % if multiple, separate directions, or multiple align codes, create individual rasterplots and sdf plots locations
     
+    allaligncodes=[];
+    
+    if ~sum(alignseccodes) %only one align code
+        numcodes=length(aligncodes);
+        allaligncodes=aligncodes;
+        rotaterow=0;
+    else
+        numcodes=2*max(length(aligncodes),length(alignseccodes));
+        if length(aligncodes)==length(alignseccodes)
+            allaligncodes=[aligncodes;alignseccodes]
+            rotaterow=0;
+        else %unequal length of alignment codes. Making them equal here
+            allaligncodes=1001*ones(numcodes,2); %first making a matrix 1001 to fill up the future "voids"
+            if length(aligncodes)>length(alignseccodes)
+            allaligncodes(1:length(aligncodes),1)=aligncodes;
+            allaligncodes(length(aligncodes)+1:end,1)=alignseccodes*ones(length(aligncodes),1);
+            allaligncodes(length(aligncodes)+1:end,2)=basecodes;
+            rotaterow=fliplr(allaligncodes(length(aligncodes)+1:end,:));
+            else
+            allaligncodes(1:length(alignseccodes),1)=alignseccodes;
+            allaligncodes(length(alignseccodes)+1:end,1)=aligncodes*ones(length(alignseccodes),1);
+            allaligncodes(length(alignseccodes)+1:end,2)=basecodes;
+            rotaterow=fliplr(allaligncodes(length(alignseccodes)+1:end,:));
+            end
+        end
+    end
+            
 figure(gcf);
 
 rasterflowh = uigridcontainer('v0','Units','norm','Position',[.3,.1,.7,.9], ...
     'Margin',3,'Tag','rasterflow','parent',findobj('Tag','rasterspanel'),'backgroundcolor', 'white');
-set(rasterflowh, 'GridSize',[ceil(length(aligncodes)/2),2]);  % default GridSize is [1,1]
-for i=1:length(aligncodes)
+set(rasterflowh, 'GridSize',[ceil(numcodes/2),2]);  % default GridSize is [1,1]
+for i=1:numcodes
 rasterh(i) = axes('parent',rasterflowh);
 set(rasterh(i),'YTickLabel',[],'XTickLabel',[]);
 end
 
 sdfflowh = uigridcontainer('v0','Units','norm','Position',[.3,.1,.7,.9], ...
     'Tag','rasterflow','parent',findobj('Tag','rasterspanel'),'backgroundcolor', 'none');
-set(sdfflowh, 'GridSize',[ceil(length(aligncodes)/2),2]);  % default GridSize is [1,1]
-for i=1:length(aligncodes)
+set(sdfflowh, 'GridSize',[ceil(numcodes/2),2]);  % default GridSize is [1,1]
+for i=1:numcodes
 sdfploth(i) = axes('parent',sdfflowh,'Color','none');
 %set(rasterh(i),'YTickLabel',[],'XTickLabel',[]);
 end
 
 
     % align trials
-    for i=1:length(aligncodes)
+    for i=1:numcodes
         
-       [rasters,aidx, trialidx, timefromtrig, eyeh,eyev,eyevel,amplitudes,peakvels,peakaccs,allgreyareas] = rdd_rasters( rdd_filename, spikechannel, aligncodes(i), nonecodes, includebad, alignsacnum, greycodes);
+       [rasters,aidx, trialidx, timefromtrigs, timetotrigs, eyeh,eyev,eyevel,...
+           amplitudes,peakvels,peakaccs,allgreyareas] = rdd_rasters( rdd_filename, spikechannel,...
+           allaligncodes(i,:), nonecodes, includebad, alignsacnum, greycodes);
        
         if isempty( rasters )
             disp( 'No raster could be generated (rex_rasters_trialtype returned empty raster)' );
@@ -456,7 +489,8 @@ end
             datalign(i).rasters=rasters;
             datalign(i).alignidx=aidx;
             datalign(i).trials=trialidx;
-            datalign(i).timefromtrig=timefromtrig;
+            datalign(i).timefromtrig=timefromtrigs;
+            datalign(i).timetotrig=timetotrigs;
             datalign(i).eyeh=eyeh;
             datalign(i).eyev=eyev;
             datalign(i).eyevel=eyevel;
@@ -491,16 +525,6 @@ end
         isnantrial=zeros(1,size(rasters,1));
         axis([0 stop-start+1 0 size(rasters,1)]);
         hold on
-
-        grey = [0.4,0.4,0.4];
-        for j=1:size(allgreyareas,1) %plotting grey area trial by trial
-            greytimes=find(allgreyareas(j,start:stop)); %converting from a matrix representation to a time collection, within selected time range
-            if isnan(sum(allgreyareas(j,start:stop)))
-                isnantrial(j)=1;
-            end
-            plot([greytimes;greytimes],[ones(size(greytimes))*j;ones(size(greytimes))*j-1],'Color',grey);
-        end
-        
         for j=1:size(rasters,1) %plotting rasters trial by trial
         spiketimes=find(rasters(j,start:stop)); %converting from a matrix representation to a time collection, within selected time range
             if isnan(sum(rasters(j,start:stop)))
@@ -513,7 +537,6 @@ end
                 % spkcntstr=sprintf('number of spikes in raster %d trial %d is %d', i, j, length(spiketimes));
                 % disp(spkcntstr);
         end
-        
         hold off;
         set(gca,'TickDir','out'); % draw the tick marks on the outside
         set(gca,'YTick', []); % don't draw y-axis ticks
@@ -525,7 +548,12 @@ end
         % finding current trial direction. 
         % Direction already flipped left/ right in find_saccades_3 line 183
         % (see rex_process > find_saccades_3)
-        curdirnb=aligncodes(i)-(floor(aligncodes(i)/10)*10);
+        if logical(sum(rotaterow(1,:))) && logical(i>=length(aligncodes)+1)
+            curdirnb=rotaterow(i-length(aligncodes),1)-(floor(rotaterow(i-length(aligncodes),1)/10)*10);
+        else
+            curdirnb=allaligncodes(i,1)-(floor(allaligncodes(i,1)/10)*10);
+        end
+        
         if curdirnb==0
             curdir='upward';
         elseif curdirnb==1
@@ -541,7 +569,11 @@ end
         elseif curdirnb==6
             curdir='leftward';
         elseif curdirnb==7
-            curdir='up_left';
+            if strcmp(tasktype,'tokens') && sum(allaligncodes(:,1)-(floor(allaligncodes(1,1)/10)*10)==2)
+                curdir='leftward'; % made a mistake on the flag
+            else
+                curdir='up_left';
+            end
         end
         
         s1 = sprintf( 'Trials for %s direction, n = %d trials.', curdir, trials); %num2str( aligncodes(i) )
@@ -605,7 +637,7 @@ end
 
 end
 
-        datalign(1).savealignname = cat( 2, 'Users/nick/Dropbox/filesforNick/processed/aligned/', rdd_filename, '_', ATPSelectedButton);
+        datalign(1).savealignname = cat( 2, 'B:\data\Recordings\processed\aligned\', rdd_filename, '_', ATPSelectedButton);
         
 
 %% eye velocity plot

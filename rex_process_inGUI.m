@@ -36,6 +36,9 @@ allh = [];
 allv = [];
 allstart = [];
 allbad = [];
+alltrigin=[];
+alltrigout=[];
+allrew=[];
 alldeleted = [];
 allsacstart = [];
 allsacend = [];
@@ -78,8 +81,21 @@ nt = rex_numtrials_raw( rexname, includeaborted ); %rawdir
 %nt = rex_numtrials_fake( rexname, includeaborted );
 %% trialnumber is the trial # from the recorded file. Some may be discarded in this loop. next is the resulting trial number
 for trialnumber = 1:nt
-    [ecodeout, etimeout, spkchan, spk, arate, h, v, start_time, badtrial ] = rex_trial_raw(rexname, trialnumber, includeaborted); %rawdir
+    [ecodeout, etimeout, spkchan, spk, arate, h, v, start_time, badtrial, analog_time] = rex_trial_raw(rexname, trialnumber, includeaborted); %rawdir
     %[ecodeout, etimeout, spkchan, spk, arate, h, v, start_time, badtrial ] = rex_trial_fake(rexname, trialnumber, includeaborted);
+    if length(badtrial)>1 %rare event: two identical error code in the same trial
+        secbadtrltime=badtrial(2)-analog_time;
+            figure;
+            plot(h,'r');
+            hold on; plot(v,'g');
+            plot(badtrial-analog_time,8,'*-k');
+            plot(etimeout([2 4 5]),8,'*b'); % if token task, these are the
+                                            % basecode, fixation display and
+                                            % eye in window respectively (if
+                                            % it goes to that point)
+        badtrial=badtrial(1);
+    end
+    
     if isempty(h) || isempty(ecodeout)
         disp( 'rex_process.m:  Something wrong with trial, no data.  The trial will be skipped, and trial numbers will shift in the converted file to reflect this.' );
         %     elseif badtrial && ~includeaborted
@@ -139,8 +155,24 @@ for trialnumber = 1:nt
         allh = cat_variable_size_row( allh, h );
         allv = cat_variable_size_row( allv, v );
         %alleyelen( next ) = length( h );
-        allstart( next ) = start_time;
-        allbad( next ) = badtrial;
+        allstart(next) = start_time;
+        %collect absolute times for bad trials, trigger and reward
+        allbad(next) = badtrial;
+        alltrigin(next)=etimeout(find(ecodeout==1001,1))+analog_time-1; %-1 to align with first trigger (useless if no trigger channel
+        if find(ecodeout==1502)
+            alltrigout(next)=etimeout(find(ecodeout==1502,1))+analog_time; % the second 1502 in ecodes is actually the one for the next trial
+        else
+            if find(ecodeout==1030,1)
+            alltrigout(next)=etimeout(find(ecodeout==1030,1))+analog_time; % if no trigger code, then use reward time
+            else
+            alltrigout(next)=NaN; %nothing to align bad trials on recordings without trigger channel to
+            end
+        end
+        if find(ecodeout==1030,1)
+            allrew(next)=etimeout(find(ecodeout==1030,1))+analog_time;
+        else
+            allrew(next)=NaN;
+        end
         alldeleted( next ) = 0;
         %%
         %  Find saccades, either from a DEX file, or by using the
@@ -287,6 +319,10 @@ for trialnumber = 1:nt
         end
         
         [curtasktype, ecodecueon, ecodesacstart, ecodesacend]=taskdetect(ecodeout);
+        if strcmp(curtasktype,'tokens') && logical(sum(ecodecueon)) %multiple cues
+            allcues=ecodecueon; %keep it for later
+            ecodecueon=ecodecueon(end); %for the moment only keep the last one
+        end
         codefound=sum(ecodecueon & ecodesacstart & ecodesacend);
         if codefound
         sacofint=nwsacstart>etimeout(ecodesacstart-1); %considering all saccades occuring after the ecode
@@ -375,13 +411,13 @@ for trialnumber = 1:nt
     waitbar( (trialnumber/nt)*0.9, wb, 'Converting Rex data...' );
 end;
 %%
-if strcmp(rawdir,'/Users/nick/Dropbox/filesforNick/Rigel/')
-procdir='/Users/nick/Dropbox/filesforNick/processed/Rigel/';
+if strcmp(rawdir,'B:\data\Recordings\Rigel\')
+procdir='B:\data\Recordings\processed\Rigel\';
     if ~strcmp(rexname(1),'R')
         rexname=cat(2,'R',rexname);
     end
-elseif strcmp(rawdir,'/Users/nick/Dropbox/filesforNick/Sixx/')
-procdir='/Users/nick/Dropbox/filesforNick/processed/Sixx/';
+elseif strcmp(rawdir,'B:\data\Recordings\Sixx\')
+procdir='B:\data\Recordings\processed\Sixx\';
     if ~strcmp(rexname(1),'S')
         rexname=cat(2,'S',rexname);
     end
@@ -394,8 +430,8 @@ rexnumtrials = next -1; %nt;
 
 allrexnotes = sprintf( '%s, converted on %s\n%d trials\n', rexloadedname, datestr( now ), rexnumtrials );
 save( newname, 'rexloadedname', 'rexnumtrials', 'alloriginaltrialnums', 'allnewtrialnums', 'allcodes', 'alltimes', 'allspkchan', 'allspk', 'allrates', ...
-    'allh', 'allv', 'allstart', 'allbad', 'alldeleted', 'allsacstart', 'allsacend',...
-   'allrexnotes', 'saccadeInfo','-v7.3'); %using '-v7.3' input arguments so that matfile loading runs well when retrieving data from file
+    'allh', 'allv', 'allstart', 'allbad', 'alltrigin', 'alltrigout', 'allrew', 'alldeleted', 'allsacstart', 'allsacend',...
+    'allspklen', 'allsaclen', 'allrexnotes', 'saccadeInfo','-v7.3'); %using '-v7.3' input arguments so that matfile loading runs well when retrieving data from file
 %removed allcodelen and alleyelen. allspklen should go too, and allrates be included
 %elsewhere
 
